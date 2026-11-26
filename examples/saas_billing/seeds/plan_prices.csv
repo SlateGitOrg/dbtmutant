@@ -1,0 +1,7 @@
+plan_id,billing_period,price
+1,monthly,49.00
+1,annual,490.00
+2,monthly,149.00
+2,annual,1490.00
+3,monthly,499.00
+3,annual,4990.00

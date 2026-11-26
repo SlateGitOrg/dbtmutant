@@ -1,0 +1,7 @@
+saas_billing:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBTMUTANT_DUCKDB_PATH', 'target/saas_billing.duckdb') }}"
+      threads: 1

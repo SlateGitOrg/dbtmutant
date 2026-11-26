@@ -1,0 +1,60 @@
+name: saas_billing
+version: "1.0.0"
+config-version: 2
+profile: saas_billing
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "logs"]
+
+flags:
+  send_anonymous_usage_stats: false
+  use_colors: false
+
+seeds:
+  saas_billing:
+    accounts:
+      +column_types:
+        account_id: integer
+        segment: varchar
+        signup_date: date
+    plans:
+      +column_types:
+        plan_id: integer
+        plan_name: varchar
+    plan_prices:
+      +column_types:
+        plan_id: integer
+        billing_period: varchar
+        price: decimal(10,2)
+    subscription_events:
+      +column_types:
+        event_id: integer
+        account_id: integer
+        event_date: date
+        event_type: varchar
+        plan_id: integer
+        billing_period: varchar
+    invoices:
+      +column_types:
+        invoice_id: integer
+        account_id: integer
+        invoice_date: date
+        gross_amount: decimal(10,2)
+    credit_notes:
+      +column_types:
+        credit_note_id: integer
+        invoice_id: integer
+        credit_amount: decimal(10,2)
+        issued_date: date
+
+models:
+  saas_billing:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: table
+    marts:
+      +materialized: table

@@ -1,0 +1,14 @@
+/.venv/
+/.tmp/
+__pycache__/
+/.pytest_cache/
+/.ruff_cache/
+*.egg-info/
+/dist/
+/build/
+/examples/saas_billing/target/
+/examples/saas_billing/logs/
+/examples/saas_billing/dbt_packages/
+*.duckdb
+*.duckdb.wal
+/report/

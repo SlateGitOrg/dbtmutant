@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: stg_accounts
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: segment
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [smb, mid_market, enterprise]
+  - name: stg_plans
+    columns:
+      - name: plan_id
+        data_tests: [unique, not_null]
+  - name: stg_plan_prices
+    columns:
+      - name: plan_id
+        data_tests: [not_null]
+  - name: stg_subscription_events
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: account_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [start, upgrade, downgrade, cancel, reactivate, renewal]
+  - name: stg_invoices
+    columns:
+      - name: invoice_id
+        data_tests: [unique, not_null]
+      - name: gross_amount
+        data_tests: [not_null]
+  - name: stg_credit_notes
+    columns:
+      - name: credit_note_id
+        data_tests: [unique, not_null]
+      - name: invoice_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_invoices')
+                field: invoice_id

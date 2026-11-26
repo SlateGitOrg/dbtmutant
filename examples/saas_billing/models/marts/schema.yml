@@ -1,0 +1,96 @@
+version: 2
+
+models:
+  - name: fct_mrr_daily
+    columns:
+      - name: account_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
+      - name: day
+        data_tests: [not_null]
+      - name: mrr
+        data_tests: [not_null]
+  - name: fct_mrr_movements
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [new, expansion, contraction, churn, reactivation]
+  - name: mart_arr_by_segment
+    columns:
+      - name: segment_month_key
+        data_tests: [unique, not_null]
+      - name: segment
+        data_tests: [not_null]
+      - name: month_end
+        data_tests: [not_null]
+
+unit_tests:
+  - name: movements_cover_all_five_types
+    description: A full account lifecycle produces new, expansion, contraction, churn and reactivation.
+    model: fct_mrr_movements
+    given:
+      - input: ref('stg_subscription_events')
+        rows:
+          - {event_id: 1, account_id: 1, event_date: "2024-03-01", event_type: start, plan_id: 1, billing_period: monthly}
+          - {event_id: 2, account_id: 1, event_date: "2024-04-01", event_type: upgrade, plan_id: 2, billing_period: monthly}
+          - {event_id: 3, account_id: 1, event_date: "2024-05-01", event_type: downgrade, plan_id: 1, billing_period: monthly}
+          - {event_id: 4, account_id: 1, event_date: "2024-06-01", event_type: cancel}
+          - {event_id: 5, account_id: 1, event_date: "2024-06-15", event_type: reactivate, plan_id: 1, billing_period: monthly}
+      - input: ref('stg_plan_prices')
+        rows:
+          - {plan_id: 1, billing_period: monthly, price: 49.00}
+          - {plan_id: 2, billing_period: monthly, price: 149.00}
+      - input: ref('int_account_credits')
+        rows:
+          - {account_id: 1, credit_rate: 0.0000}
+    expect:
+      rows:
+        - {event_id: 1, movement_type: new, mrr_before: 0.00, mrr_after: 49.00, mrr_delta: 49.00}
+        - {event_id: 2, movement_type: expansion, mrr_before: 49.00, mrr_after: 149.00, mrr_delta: 100.00}
+        - {event_id: 3, movement_type: contraction, mrr_before: 149.00, mrr_after: 49.00, mrr_delta: -100.00}
+        - {event_id: 4, movement_type: churn, mrr_before: 49.00, mrr_after: 0.00, mrr_delta: -49.00}
+        - {event_id: 5, movement_type: reactivation, mrr_before: 0.00, mrr_after: 49.00, mrr_delta: 49.00}
+
+  - name: movements_use_annual_price_and_credit_rate
+    description: Annual prices are divided by 12 and reduced by the account's credit rate.
+    model: fct_mrr_movements
+    given:
+      - input: ref('stg_subscription_events')
+        rows:
+          - {event_id: 1, account_id: 2, event_date: "2024-03-10", event_type: start, plan_id: 2, billing_period: annual}
+      - input: ref('stg_plan_prices')
+        rows:
+          - {plan_id: 2, billing_period: annual, price: 1490.00}
+      - input: ref('int_account_credits')
+        rows:
+          - {account_id: 2, credit_rate: 0.1000}
+    expect:
+      rows:
+        - {event_id: 1, movement_type: new, mrr_before: 0.00, mrr_after: 111.75, mrr_delta: 111.75}
+
+  - name: movements_skip_renewals_and_unchanged_mrr
+    description: Renewals and plan changes that leave MRR unchanged produce no movement.
+    model: fct_mrr_movements
+    given:
+      - input: ref('stg_subscription_events')
+        rows:
+          - {event_id: 1, account_id: 3, event_date: "2024-03-10", event_type: start, plan_id: 1, billing_period: monthly}
+          - {event_id: 2, account_id: 3, event_date: "2024-04-10", event_type: renewal, plan_id: 1, billing_period: monthly}
+          - {event_id: 3, account_id: 3, event_date: "2024-04-20", event_type: upgrade, plan_id: 1, billing_period: monthly}
+      - input: ref('stg_plan_prices')
+        rows:
+          - {plan_id: 1, billing_period: monthly, price: 49.00}
+      - input: ref('int_account_credits')
+        rows:
+          - {account_id: 3, credit_rate: 0.0000}
+    expect:
+      rows:
+        - {event_id: 1, movement_type: new, mrr_before: 0.00, mrr_after: 49.00, mrr_delta: 49.00}

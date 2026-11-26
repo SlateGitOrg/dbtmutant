@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: int_subscription_days
+    columns:
+      - name: billing_period
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [monthly, annual]
+  - name: int_account_credits
+    columns:
+      - name: account_id
+        data_tests: [unique, not_null]
+      - name: credit_rate
+        data_tests: [not_null]
+
+unit_tests:
+  - name: days_annual_plan_and_open_ended_period
+    description: An annual plan is spread over 12 months and an open period runs to the calendar end.
+    model: int_subscription_days
+    given:
+      - input: ref('stg_subscription_events')
+        rows:
+          - {event_id: 1, account_id: 1, event_date: "2025-12-30", event_type: start, plan_id: 2, billing_period: annual}
+      - input: ref('stg_plan_prices')
+        rows:
+          - {plan_id: 2, billing_period: annual, price: 1490.00}
+          - {plan_id: 2, billing_period: monthly, price: 149.00}
+    expect:
+      rows:
+        - {account_id: 1, day: "2025-12-30", plan_id: 2, billing_period: annual, list_mrr: 124.17}
+        - {account_id: 1, day: "2025-12-31", plan_id: 2, billing_period: annual, list_mrr: 124.17}
+
+  - name: days_ignore_renewals_and_price_by_plan
+    description: Renewal rows add no days; each account is priced from its own plan.
+    model: int_subscription_days
+    given:
+      - input: ref('stg_subscription_events')
+        rows:
+          - {event_id: 1, account_id: 1, event_date: "2025-12-30", event_type: start, plan_id: 1, billing_period: monthly}
+          - {event_id: 2, account_id: 2, event_date: "2025-12-31", event_type: start, plan_id: 3, billing_period: monthly}
+          - {event_id: 3, account_id: 1, event_date: "2025-12-31", event_type: renewal, plan_id: 1, billing_period: monthly}
+      - input: ref('stg_plan_prices')
+        rows:
+          - {plan_id: 1, billing_period: monthly, price: 49.00}
+          - {plan_id: 3, billing_period: monthly, price: 499.00}
+    expect:
+      rows:
+        - {account_id: 1, day: "2025-12-30", plan_id: 1, list_mrr: 49.00}
+        - {account_id: 1, day: "2025-12-31", plan_id: 1, list_mrr: 49.00}
+        - {account_id: 2, day: "2025-12-31", plan_id: 3, list_mrr: 499.00}

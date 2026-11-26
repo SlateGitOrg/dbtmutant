@@ -1,0 +1,11 @@
+# Business-impact metrics used to rank surviving mutants: the change in the column's sum at the
+# latest period of the named model's baseline output (mutated minus baseline).
+impact:
+  mrr:
+    model: mart_arr_by_segment
+    column: mrr
+    period_column: month_end
+  arr:
+    model: mart_arr_by_segment
+    column: arr
+    period_column: month_end
